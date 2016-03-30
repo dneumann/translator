@@ -17,39 +17,60 @@ import javax.swing.JTextArea;
 import org.apache.commons.io.IOUtils;
 
 public class MyListener extends MouseAdapter {
-	
-	private final static int NUMBER_OF_TRANSLATIONS = 5;
-	
+
+	private final static int NUMBER_OF_TRANSLATIONS = 7;
+
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		if (e.getClickCount() != 2) {
 			return;
 		}
 
+		String selectedWord = ((JTextArea) e.getComponent()).getSelectedText();
+		String wordsToShow = selectedWord + ":\n\n";
+
+		List<String> arabicTranslations = getTranslations("http://www.arabdict.com/en/english-arabic/" + selectedWord,
+				"arabic-term\">(.*?)<");
+		for (int i = 0; i < NUMBER_OF_TRANSLATIONS; i++) {
+			if (i < arabicTranslations.size()) {
+				wordsToShow += arabicTranslations.get(i) + "\n";
+			}
+		}
+		wordsToShow += "\n";
+		
+		List<String> germanTranslations = getTranslations("http://en-de.dict.cc/?s=" + selectedWord,
+				"a href=\"/deutsch-englisch/[^>]+>(.*?)<");
+		for (int i = 0; i < NUMBER_OF_TRANSLATIONS; i++) {
+			if (i < germanTranslations.size() && "".equals(germanTranslations.get(i))) {
+				germanTranslations.remove(i);
+				i--;
+				continue;
+			}
+			if (i < germanTranslations.size()) {
+				wordsToShow += germanTranslations.get(i) + "\n";
+			}
+		}
+
+		JOptionPane.showMessageDialog(e.getComponent().getParent(), wordsToShow, selectedWord,
+				JOptionPane.PLAIN_MESSAGE);
+	}
+
+	private List<String> getTranslations(String urlString, String regex) {
+		List<String> foundTranslations = new ArrayList<String>();
 		try {
-
-			String selectedWord = ((JTextArea) e.getComponent()).getSelectedText();
-			String wordsToShow = selectedWord + ":\n\n";
-
-			URL url = new URL("http://www.arabdict.com/en/english-arabic/" + selectedWord);
+			URL url = new URL(urlString);
 			HttpURLConnection httpcon = (HttpURLConnection) url.openConnection();
 			httpcon.addRequestProperty("User-Agent", "Mozilla/4.0");
 			InputStream is = httpcon.getInputStream();
 			String answer = IOUtils.toString(is, "UTF8");
 			is.close();
-			
-			List<String> arabicTranslations = extractUsingRegex("arabic-term\">(.*?)<", answer.replaceAll("\\n", " "));
-			for (int i = 0; i < NUMBER_OF_TRANSLATIONS; i++) {
-				if (i < arabicTranslations.size()) {
-					wordsToShow += arabicTranslations.get(i) + "\n";
-				}
-			}
-
-			JOptionPane.showMessageDialog(e.getComponent().getParent(), wordsToShow, selectedWord, JOptionPane.PLAIN_MESSAGE);
+			foundTranslations = extractUsingRegex(regex, answer.replaceAll("\\n", " "));
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+		return foundTranslations;
+
 	}
 
 	private List<String> extractUsingRegex(String regex, String s) {
