@@ -1,1 +1,1 @@
-a test for jgit
+a test for jgit 2
